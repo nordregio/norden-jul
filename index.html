@@ -1,0 +1,385 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <title>norden-deck</title>
+    <script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
+    <link
+      href="https://unpkg.com/deck.gl@^9.0.0/dist/stylesheet.css"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/maplibre-gl@3.0.0/dist/maplibre-gl.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl@3.0.0/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
+    
+    <style>
+     .range {
+       /* --range-shdw: oklch(0.51 0.08 278.8); */
+       --range-shdw: #266d51;
+     }
+     
+     body {
+       width: 100vw;
+       height: 100vh;
+       margin: 0;
+       overflow: hidden;
+       filter: drop-shadow(0 0 10px white);
+     }
+
+     #deck-container {
+       width: 100vw;
+       height: 100vh;
+     }
+
+     #deck-container canvas {
+       z-index: 1;
+       background: none;
+     }
+
+     .deck-widget {
+       --button-size: 36px;
+     }
+
+     #control-panel, #text-box, #popover-button, #popover-info {
+       font-family: Corbel, Helvetica, Arial;
+       position: absolute;
+       background: #fff;
+       left: 0;
+       margin: 12px;
+       padding: 4px 20px;
+       z-index: 1;
+       font-size: 12px;
+       width: 220px;
+       text-align: left;
+       opacity: 0.8;
+       margin-bottom: 1%;
+       margin-top: 1%;
+     }
+
+     #popover-button {
+       bottom: 10px;
+     }
+
+     #text-box {
+       bottom: 50px;
+     }
+
+     #control-panel {
+       bottom: 90px;
+     }
+     
+     #popover-info {
+       font-size: 10px;
+       padding: 20px;
+       width: 400px;
+     }
+     
+     .snow {
+       position: absolute;
+       width: 10px;
+       height: 10px;
+       background: white;
+       border-radius: 50%;
+       opacity: 0;
+     }
+
+     @keyframes fall {
+       0% {
+         transform: translate(var(--x-start), -10px) scale(var(--scale));
+         opacity: var(--opacity);
+       }
+       50% {
+         transform: translate(var(--x-mid), var(--y-mid)) scale(var(--scale));
+       }
+       100% {
+         transform: translate(var(--x-end), 100vh) scale(var(--scale));
+       }
+     }
+
+     .snow {
+       animation: fall var(--duration) var(--delay) linear infinite;
+     }
+
+     #logo, #misletoe_right, #misletoe_left, #santa, #garland, #misletoe_right_sm, #misletoe_left_sm, #snowman {
+       position: absolute;
+       z-index: 1000;
+       height: auto;       
+     }
+     
+     #santa {
+       bottom: 160px;
+       left: 20px;
+       width: 400px;
+       height: auto;
+     }
+
+     #misletoe_right {
+       top: 0px;
+       right: 40px;
+       width: 100px;
+     }
+
+     #misletoe_left {
+       top: 0px;
+       left: 40px;
+       width: 100px;
+     }
+
+     #misletoe_right_sm {
+       top: 0px;
+       right: 150px;
+       width: 70px;
+     }
+
+     #misletoe_left_sm {
+       top: 0px;
+       left: 150px;
+       width: 70px;
+     }
+     
+     #garland {
+       top: 100px;
+       left: 50%;
+       transform: translate(-50%, -50%);
+       width: 500px;
+     }
+
+     #snowman {
+       bottom: 0px;
+       right: 20px;
+       transform: translate(-50%, -50%);
+       width: 100px;
+     }
+     
+     #logo {
+       top: 30px;
+       right: 0px;
+       transform: translate(-50%, -50%);
+       width: 200px;
+     }
+     
+    </style>
+
+  </head>  
+
+  <body>    
+
+    <div id="control-panel" class="rounded-lg shadow-md">
+      <div>
+        <label class="font-bold" onclick="defaults()">Tune elevation scale</label>
+        <input id="elevationScale" type="range" min="1" max="40" step="1" value="6" class="range range-xs"></input>
+        <label class="font-normal" onclick="defaults()">Reset</label>
+      </div>
+    </div>
+
+    <div id="text-box" class="rounded-lg shadow-md font-bold">
+      <div>
+        <p>
+          Hold <kbd class="kbd kbd-xs">CNTR</kbd> to rotate the map
+        </p>
+      </div>
+    </div>
+
+
+    <button id="popover-button" data-popover-target="popover-info" data-popover-placement="right" type="button" class="rounded-lg shadow-md font-bold">Info</button>
+    <div data-popover
+         id="popover-info"
+         role="tooltip"
+         class="rounded-lg shadow-md invisible inline-block transition-opacity duration-300 bg-white border border-gray-200 opacity-0">
+      <div id="popover-text" class="px-3 py-2">
+        The map shows the number of people residing in each 1km grid cell with the height of the bars showing how many people are residing in each cell. Data source:  Nordic Statistical Institutes, 2022. <br>
+        <br>
+        We invite you to peruse the map as users can zoom in and out and ‘fly’ around the Nordic Region. Get a close up of your favorite Nordic city or region. Or, play a game to see if you can name the city representing a cluster of bars in some distant Nordic region.
+        <br>
+        <br>
+        <a href="https://nordregio.org/" class="inline-flex items-center font-medium text-black-600 dark:text-black-500 hover:underline">
+          Visit nordregio.org to learn more about the Nordic region
+          <svg class="w-4 h-4 ms-2 rtl:rotate-180" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 10">
+            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1 5h12m0 0L9 1m4 4L9 9"/>
+          </svg>
+        </a>
+        <br>
+        <br>
+        Made by
+        <a href="https://kamiladcr.github.io/" class="inline-flex hover:underline">
+          kamiladcr
+        </a>
+        </p>
+      </div>
+    </div>
+
+    <div id="logo">
+      <img src="static/logo_green.png">
+    </div>
+
+    <div id="santa">
+      <img src="static/santa.png">
+    </div>
+    
+    <div id="misletoe_right">
+      <img src="static/misletoe.png">
+    </div>
+    
+    <div id="misletoe_left">
+      <img src="static/misletoe.png">
+    </div>
+    
+    <div id="misletoe_right_sm">
+      <img src="static/misletoe.png">
+    </div>
+    
+    <div id="misletoe_left_sm">
+      <img src="static/misletoe.png">
+    </div>
+    
+    <div id="garland">
+      <img src="static/garland.png">
+    </div>
+
+    
+    <script>
+     const {
+       DeckGL,
+       MapView,
+       ColumnLayer,
+       PolygonLayer,
+       CompassWidget,
+       ZoomWidget,
+       FullscreenWidget,
+     } = deck;
+
+     const polygon_layer = new PolygonLayer({
+       id: "PolygonLayer",
+       data: "layers/polygon_layer.json",
+       pickable: false,
+       getPolygon: (d) => d,
+       filled: false,
+       getLineColor: [211, 211, 211, 255],
+       lineWidthMinPixels: 1,
+     });
+
+     function getTooltip({ object }) {
+       return (
+         object && {
+           html: `${object.population} <br><b>${object.munname}</b>`,
+           style: {
+             background: "white",
+             color: "black",
+             "font-family": '"Helvetica Neue", Arial',
+             "font-size": "10px",
+           },
+         }
+       );
+     }
+
+     const deckgl = new DeckGL({
+       map: maplibregl,
+       mapStyle: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+       initialViewState: {
+         bearing: 0,
+         latitude: 62,
+         longitude: 10,
+         maxZoom: 15,
+         minZoom: 4,
+         pitch: 80,
+         zoom: 5,
+       },
+       views: [
+         new MapView({
+           id: "map",
+           controller: true,
+         }),
+       ],
+       layers: [],
+       widgets: [
+         new CompassWidget({
+           id: "compass",
+           viewId: "map",
+         }),
+         new ZoomWidget({
+           id: "zoom",
+           viewId: "map",
+         }),
+         new FullscreenWidget({
+           id: "fullscreen",
+           viewId: "map",
+           placement: "top-right",
+         }),
+       ],
+       getTooltip,
+     });
+
+     const OPTIONS = ['elevationScale'];
+
+     OPTIONS.forEach(key => {
+       document.getElementById(key).oninput = renderLayer;
+     });
+
+     renderLayer();
+
+     function renderLayer () {
+       const options = {};
+       OPTIONS.forEach(key => {
+         const value = +document.getElementById(key).value;
+         options[key] = value; 
+       });
+
+       const column_layer = new ColumnLayer({
+         id: "ColumnLayer",
+         data: "layers/column_layer.json",
+         extruded: true,
+         radius: 500,
+         pickable: true,
+         autoHighlight: true,
+         getPosition: (d) => [d.lng, d.lat],
+         getElevation: (d) => d.population,
+         getElevationWeight: (d) => d.population,
+         getFillColor: (d) => d.fill_color,
+         highlightColor: [130, 40, 50, 255],
+         ...options
+       });
+       
+       deckgl.setProps({
+         layers: [polygon_layer, column_layer]
+       });
+     };
+
+     function defaults() {
+       document.getElementById('elevationScale').value = 6;
+       renderLayer();
+     };   
+
+     // snowflakes 
+     const totalSnowflakes = 800; 
+     for (let i = 0; i < totalSnowflakes; i++) {
+       const flake = document.createElement('div');
+       flake.classList.add('snow');
+
+       const xStart = Math.random() * 100 + 'vw';
+       const xMid = Math.random() * 100 + 'vw';
+       const xEnd = Math.random() * 100 + 'vw';
+       const yMid = Math.random() * 50 + 'vh';
+       const scale = Math.random() * 0.5 + 0.5;
+       const opacity = Math.random() * 0.5 + 0.5;
+       const duration = Math.random() * 20 + 10 + 's';
+       const delay = Math.random() * -20 + 's';
+
+       flake.style.setProperty('--x-start', xStart);
+       flake.style.setProperty('--x-mid', xMid);
+       flake.style.setProperty('--x-end', xEnd);
+       flake.style.setProperty('--y-mid', yMid);
+       flake.style.setProperty('--scale', scale);
+       flake.style.setProperty('--opacity', opacity);
+       flake.style.setProperty('--duration', duration);
+       flake.style.setProperty('--delay', delay);
+
+       document.body.appendChild(flake);
+     }
+    </script>
+
+</html>
